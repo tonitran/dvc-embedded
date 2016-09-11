@@ -1,5 +1,10 @@
+- [Master ![Build Status](https://travis-ci.org/tonitran/dvc-embedded.svg?branch=master)](https://travis-ci.org/tonitran/dvc-embedded)
+- [Develop ![Build Status](https://travis-ci.org/tonitran/dvc-embedded.svg?branch=develop)](https://travis-ci.org/tonitran/dvc-embedded)
+
 Embedded Door Sensor
 ===
+
+
 This is the script running on the Raspberry Pi that allows it to poll the state of the door, as well as expose a REST endpoint for polling. Feel free to add any features that you want (after vigorous testing, of course)!
 
 How to Contribute
