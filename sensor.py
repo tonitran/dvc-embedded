@@ -1,23 +1,28 @@
 #!/usr/bin/python3
 # Python 3.5.2
 
-from twisted.internet import task
-from twisted.internet import reactor
+from crochet import setup, wait_for, run_in_reactor
+from flask import Flask
 from pprint import pprint
-import sqlite3
-import shutil
+from threading import Thread
+from twisted.internet import reactor
+from twisted.internet import task
+from twisted.internet.task import LoopingCall
 import argparse
+import datetime
 import json
+import shutil
+import sqlite3
 import sys
 import time
-import datetime
 import wiringpi
-from flask import Flask
-from threading import Thread
+
+# Run Crochet setup to allow Twisted runs during Flask
+setup()
 
 # TODO Create argparse method
 # TODO Handle environment variables
-
+# Log only at certain times
 
 ################################################################################
 # RUN CONFIGS
@@ -85,6 +90,7 @@ def logDoorState(dict):
         con = sqlite3.connect('logs.db')
         cur = con.cursor()
         val = (dict['timeStamp'], dict['isOpen'])
+        print(val)
         cur.execute('insert into history (timeStamp, isOpen) values (?,?)', val)
         con.commit()
     except sqlite3.Error as e:
@@ -94,13 +100,20 @@ def logDoorState(dict):
         if con:
             con.close()
 
-# Thread for doing continuous logging.
-def loggerThread(delay, limit):
-    while limit > 0:
-        logDoorState(getDoorState())
-        if limit != 0:
-            limit = limit - 1
-        time.sleep(delay)
+# Crochet thread that manages and runs auto logging.
+# TODO Plugging holes in DB?
+@run_in_reactor
+def loggerThread():
+    #Wait for an even 5th minute to begin logging.
+    currMin = -1
+    while (currMin % 5) != 0:
+        now = datetime.datetime.now()
+        currMin = now.minute
+    while True:
+        print("Logging auto")
+        state = getDoorState()
+        logDoorState(state)
+        time.sleep(60 * 5)
 
 ################################################################################
 # FLASK
@@ -149,12 +162,8 @@ def getLog(year, month, day):
     finally:
         if con:
             con.close()
-    return 'test'
 
 # Runs the REST server and begins auto logging
 if __name__ == "__main__":
-    AUTOLOGGER_DELAY = 1
-    AUTOLOGGER_LIMIT = 5 # Limit number of logs. Set to 0 for infinite.
-    autoLogger = Thread(target = loggerThread, args = (AUTOLOGGER_DELAY, AUTOLOGGER_LIMIT))
-    autoLogger.start()
+    loggerThread()
     app.run()
