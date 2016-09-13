@@ -3,8 +3,6 @@
 
 Embedded Door Sensor
 ===
-
-
 This is the script running on the Raspberry Pi that allows it to poll the state of the door, as well as expose a REST endpoint for polling. Feel free to add any features that you want (after vigorous testing, of course)!
 
 How to Contribute
@@ -13,7 +11,6 @@ Follow the [Git branching process](http://nvie.com/posts/a-successful-git-branch
 Always make feature branches off of `develop`. Submit a pull request against develop when ready.
 
 Test thoroughly on develop before merging into `master`. Master is the production branch and should **always be stable**.
-
 
 SSH
 ---
