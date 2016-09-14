@@ -11,6 +11,7 @@ from twisted.internet.task import LoopingCall
 import argparse
 import datetime
 import json
+import random
 import shutil
 import sqlite3
 import sys
@@ -22,13 +23,6 @@ setup()
 
 # TODO Create argparse method
 # TODO Handle environment variables
-# Log only at certain times
-
-################################################################################
-# RUN CONFIGS
-################################################################################
-# Delay for auto logger, in seconds
-env = "nopi" # by default
 
 ################################################################################
 # ENVIRONMENT VARIABLES
@@ -39,21 +33,15 @@ PROD = "prod"
 LOCAL = "local"
 NOPI = "nopi"
 
-
-## Ensure env arg is included.
-argc = len(sys.argv)
-if argc == 2:
-    env = sys.argv[1]
-else:
-    print("Please provide environment arg.")
-    quit()
+# SET THIS TO CHANGE ENVIRONMENT
+ENV = PROD # by default
 
 ################################################################################
 # PI HARDWARE
 ################################################################################
 
 # Set up pins, if using Pi
-if env == PROD or env == LOCAL:
+if ENV != NOPI:
     WP_PIN = 7 # See where this maps to on an rpi2
     INPUT_MODE = 0
     OUTPUT_MODE = 1
@@ -66,9 +54,9 @@ if env == PROD or env == LOCAL:
 def getDoorState():
     timeStamp = '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
     doorIsOpen = -1
-    if env == NOPI:
-        doorIsOpen = 0
-    elif env == PROD or env == LOCAL:
+    if ENV == NOPI:
+        doorIsOpen = random.randint(0, 1) #Use random if you don't have a pi.
+    elif ENV == PROD or ENV == LOCAL:
         isOpen = wiringpi.digitalRead(WP_PIN)
         doorIsOpen = isOpen
     return {'timeStamp': timeStamp, 'isOpen': doorIsOpen}
@@ -102,25 +90,36 @@ def logDoorState(dict):
 
 # Crochet thread that manages and runs auto logging.
 # TODO Plugging holes in DB?
+# TODO DB Storage and duplication?
 @run_in_reactor
 def loggerThread():
-    #Wait for an even 5th minute to begin logging.
+
+    PROD_INTERVAL = 60 * 5 # 5min
+    PROD_START_MOD = 5 # Start on nearest 5th minute
+    LOCAL_INTERVAL = 5 # x second intervals
+    LOCAL_START_MOD = 1 # Start on nearest xth minute
+
+    START_MOD = PROD_START_MOD if ENV == PROD else LOCAL_START_MOD
+    INTERVAL = PROD_INTERVAL if ENV == PROD else LOCAL_INTERVAL
+
     currMin = -1
-    while (currMin % 5) != 0:
+    while (currMin % START_MOD) != 0:
         now = datetime.datetime.now()
         currMin = now.minute
     while True:
-        print("Logging auto")
         state = getDoorState()
         logDoorState(state)
-        time.sleep(60 * 5)
+        time.sleep(INTERVAL)
 
 ################################################################################
 # FLASK
 ################################################################################
 
 # Flask setup
+loggerThread() #Run logger before starting application.
 app = Flask(__name__)
+if __name__ == "__main__":
+    app.run()
 
 ##### REST endpoints#####
 
@@ -162,8 +161,3 @@ def getLog(year, month, day):
     finally:
         if con:
             con.close()
-
-# Runs the REST server and begins auto logging
-if __name__ == "__main__":
-    loggerThread()
-    app.run()
