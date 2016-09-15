@@ -1,7 +1,6 @@
 run:
-	#export FLASK_APP=sensor.py
-	#flask run
-	python3 -m sensor
+	export FLASK_APP=sensor.py
+	flask run --host=0.0.0.0
 
 clean:
 	rm *.pyc

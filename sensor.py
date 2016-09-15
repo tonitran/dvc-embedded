@@ -17,6 +17,7 @@ import sqlite3
 import sys
 import time
 import wiringpi
+from flask_cors import CORS, cross_origin
 
 # Run Crochet setup to allow Twisted runs during Flask
 setup()
@@ -34,7 +35,7 @@ LOCAL = "local"
 NOPI = "nopi"
 
 # SET THIS TO CHANGE ENVIRONMENT
-ENV = PROD # by default
+ENV = NOPI # by default
 
 ################################################################################
 # PI HARDWARE
@@ -55,7 +56,8 @@ def getDoorState():
     timeStamp = '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
     doorIsOpen = -1
     if ENV == NOPI:
-        doorIsOpen = random.randint(0, 1) #Use random if you don't have a pi.
+        #doorIsOpen = random.randint(0, 1) #Use random if you don't have a pi.
+        doorIsOpen = 0
     elif ENV == PROD or ENV == LOCAL:
         isOpen = wiringpi.digitalRead(WP_PIN)
         doorIsOpen = isOpen
@@ -78,7 +80,6 @@ def logDoorState(dict):
         con = sqlite3.connect('logs.db')
         cur = con.cursor()
         val = (dict['timeStamp'], dict['isOpen'])
-        print(val)
         cur.execute('insert into history (timeStamp, isOpen) values (?,?)', val)
         con.commit()
     except sqlite3.Error as e:
@@ -94,10 +95,10 @@ def logDoorState(dict):
 @run_in_reactor
 def loggerThread():
 
-    PROD_INTERVAL = 60 * 5 # 5min
-    PROD_START_MOD = 5 # Start on nearest 5th minute
-    LOCAL_INTERVAL = 5 # x second intervals
-    LOCAL_START_MOD = 1 # Start on nearest xth minute
+    PROD_INTERVAL = 60 * 5 # seconds
+    PROD_START_MOD = 5 # Start on next minute evenly divisible by x
+    LOCAL_INTERVAL = 5 # seconds
+    LOCAL_START_MOD = 1 # Start on next nth minute.
 
     START_MOD = PROD_START_MOD if ENV == PROD else LOCAL_START_MOD
     INTERVAL = PROD_INTERVAL if ENV == PROD else LOCAL_INTERVAL
@@ -118,8 +119,9 @@ def loggerThread():
 # Flask setup
 loggerThread() #Run logger before starting application.
 app = Flask(__name__)
-if __name__ == "__main__":
-    app.run()
+CORS(app)
+#if __name__ == "__main__":
+#    app.run()
 
 ##### REST endpoints#####
 
@@ -129,12 +131,14 @@ def dictListToJSON(item):
 
 # GET call for door
 @app.route("/door")
+@cross_origin()
 def doorIsOpen():
     doorStateDict = getDoorState()
     json_data = json.dumps(doorStateDict, sort_keys=True, separators=(',', ':'))
     return json_data
 
 @app.route('/logs/<string:year>/<string:month>/<string:day>')
+@cross_origin()
 def getLog(year, month, day):
     # TODO Sanitize input using cursor function.
     date = "%s-%s-%s" % (year, month, day)
