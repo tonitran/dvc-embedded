@@ -3,6 +3,7 @@
 
 from crochet import setup, wait_for, run_in_reactor
 from flask import Flask
+from flask_cors import CORS, cross_origin
 from pprint import pprint
 from threading import Thread
 from twisted.internet import reactor
@@ -17,13 +18,11 @@ import sqlite3
 import sys
 import time
 import wiringpi
-from flask_cors import CORS, cross_origin
 
 # Run Crochet setup to allow Twisted runs during Flask
 setup()
 
 # TODO Create argparse method
-# TODO Handle environment variables
 
 ################################################################################
 # ENVIRONMENT VARIABLES
@@ -56,8 +55,7 @@ def getDoorState():
     timeStamp = '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
     doorIsOpen = -1
     if ENV == NOPI:
-        #doorIsOpen = random.randint(0, 1) #Use random if you don't have a pi.
-        doorIsOpen = 0
+        doorIsOpen = random.randint(0, 1) # If no pi, generate random data
     elif ENV == PROD or ENV == LOCAL:
         isOpen = wiringpi.digitalRead(WP_PIN)
         doorIsOpen = isOpen
@@ -67,21 +65,16 @@ def getDoorState():
 # LOGGING AND SQLITE
 ################################################################################
 
-def accessDB(method, vals):
-    if method == 'log':
-        pass
-    elif method == 'query':
-        pass
-
-# Save door state to log file.
-def logDoorState(dict):
+def accessDB(operation, query, vals):
     con = None
     try:
         con = sqlite3.connect('logs.db')
         cur = con.cursor()
-        val = (dict['timeStamp'], dict['isOpen'])
-        cur.execute('insert into history (timeStamp, isOpen) values (?,?)', val)
-        con.commit()
+        cur.execute(query, vals)
+        if operation == 'SELECT':
+            return cur.fetchall()
+        if operation == 'INSERT':
+            con.commit()
     except sqlite3.Error as e:
         print("Error %s:" % e.args[0])
         sys.exit(1)
@@ -89,9 +82,14 @@ def logDoorState(dict):
         if con:
             con.close()
 
+# Save door state to log file.
+def logDoorState(dict):
+    val = (dict['timeStamp'], dict['isOpen'])
+    query = 'insert into history (timeStamp, isOpen) values (?,?)'
+    accessDB('INSERT', query, val)
+    print("Logged: " + str(val))
+
 # Crochet thread that manages and runs auto logging.
-# TODO Plugging holes in DB?
-# TODO DB Storage and duplication?
 @run_in_reactor
 def loggerThread():
 
@@ -119,13 +117,12 @@ def loggerThread():
 # Flask setup
 loggerThread() #Run logger before starting application.
 app = Flask(__name__)
-CORS(app)
-#if __name__ == "__main__":
-#    app.run()
+CORS(app) #Run with server enabled CORS
 
 ##### REST endpoints#####
 
-def dictListToJSON(item):
+# Converts a dict or list to JSON
+def convertToJSON(item):
     json_data = json.dumps(item, sort_keys=True, separators=(',', ':'))
     return json_data
 
@@ -134,34 +131,21 @@ def dictListToJSON(item):
 @cross_origin()
 def doorIsOpen():
     doorStateDict = getDoorState()
-    json_data = json.dumps(doorStateDict, sort_keys=True, separators=(',', ':'))
-    return json_data
+    return convertToJSON(doorStateDict)
 
 @app.route('/logs/<string:year>/<string:month>/<string:day>')
 @cross_origin()
 def getLog(year, month, day):
+
     # TODO Sanitize input using cursor function.
     date = "%s-%s-%s" % (year, month, day)
-    con = None
-    try:
-        con = sqlite3.connect('logs.db')
-        cur = con.cursor()
-        cur.execute('select * from history where DATE(timeStamp) = ?', (date,))
-        returnList = cur.fetchall()
+    returnList = accessDB('SELECT','select * from history where DATE(timeStamp) = ?',(date,))
 
-        #Construct the list for the json encoder.
-        listToEncode = []
-        for tuple in returnList:
-            jsonDict = {'timeStamp': tuple[0], 'isOpen': tuple[1]}
-            listToEncode.append(jsonDict)
+    #Construct the list for the json encoder.
+    listToEncode = []
+    for tuple in returnList:
+        jsonDict = {'timeStamp': tuple[0], 'isOpen': tuple[1]}
+        listToEncode.append(jsonDict)
 
-        #Encode the JSON
-        json_data = json.dumps(listToEncode, sort_keys=False, separators=(',', ':'))
-        return json_data
-
-    except sqlite3.Error as e:
-        print("Error %s:" % e.args[0])
-        sys.exit(1)
-    finally:
-        if con:
-            con.close()
+    #Encode the JSON
+    return convertToJSON(listToEncode)
