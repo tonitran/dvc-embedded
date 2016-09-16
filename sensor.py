@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 # Python 3.5.2
 
+from runConfigs import *
 from crochet import setup, wait_for, run_in_reactor
+from flask import request
 from flask import Flask
 from flask_cors import CORS, cross_origin
 from pprint import pprint
@@ -23,19 +25,6 @@ import wiringpi
 setup()
 
 # TODO Create argparse method
-
-################################################################################
-# ENVIRONMENT VARIABLES
-################################################################################
-
-# Constants defining environments.
-PROD = "prod"
-LOCAL = "local"
-NOPI = "nopi"
-
-# SET THIS TO CHANGE ENVIRONMENT
-ENV = NOPI # by default
-
 ################################################################################
 # PI HARDWARE
 ################################################################################
@@ -52,7 +41,7 @@ if ENV != NOPI:
 # Gets door state and timestamp, returning as a dict.
 # The DateTime object is always in the form of YYYY-MM-DD. (0 Padded)
 def getDoorState():
-    timeStamp = '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
+    timeStamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     doorIsOpen = -1
     if ENV == NOPI:
         doorIsOpen = random.randint(0, 1) # If no pi, generate random data
@@ -66,9 +55,11 @@ def getDoorState():
 ################################################################################
 
 def accessDB(operation, query, vals):
+    # TODO Sanitize input before feeding to cursor.execute substitution
+
     con = None
     try:
-        con = sqlite3.connect('logs.db')
+        con = sqlite3.connect('logs.db', detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
         cur = con.cursor()
         cur.execute(query, vals)
         if operation == 'SELECT':
@@ -115,7 +106,8 @@ def loggerThread():
 ################################################################################
 
 # Flask setup
-loggerThread() #Run logger before starting application.
+if loggingEnabled is True:
+    loggerThread() #Run logger before starting application.
 app = Flask(__name__)
 CORS(app) #Run with server enabled CORS
 
@@ -135,11 +127,34 @@ def doorIsOpen():
 
 @app.route('/logs/<string:year>/<string:month>/<string:day>')
 @cross_origin()
-def getLog(year, month, day):
+def getLogOn(year, month, day):
+    return 'deprecated'
+    #date = "%s-%s-%s" % (year, month, day)
+    #returnList = accessDB('SELECT','select * from history where DATE(timeStamp) = ?',(date,))
 
-    # TODO Sanitize input using cursor function.
-    date = "%s-%s-%s" % (year, month, day)
-    returnList = accessDB('SELECT','select * from history where DATE(timeStamp) = ?',(date,))
+    ##Construct the list for the json encoder.
+    #listToEncode = []
+    #for tuple in returnList:
+    #    jsonDict = {'timeStamp': tuple[0], 'isOpen': tuple[1]}
+    #    listToEncode.append(jsonDict)
+
+    ##Encode the JSON
+    #return convertToJSON(listToEncode)
+
+@app.route('/logs')
+@cross_origin()
+def getLogRange():
+    lowerBound = request.args.get('from')
+    upperBound = request.args.get('to')
+
+    print("arg1")
+    print(lowerBound)
+    print("arg2")
+    print(upperBound)
+
+
+    query = 'select * from history where timeStamp >= ? and timeStamp < ?'
+    returnList = accessDB('SELECT',query,(lowerBound,upperBound))
 
     #Construct the list for the json encoder.
     listToEncode = []
