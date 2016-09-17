@@ -24,7 +24,6 @@ import wiringpi
 # Run Crochet setup to allow Twisted runs during Flask
 setup()
 
-# TODO Create argparse method
 ################################################################################
 # PI HARDWARE
 ################################################################################
@@ -59,7 +58,7 @@ def accessDB(operation, query, vals):
 
     con = None
     try:
-        con = sqlite3.connect('logs.db', detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+        con = sqlite3.connect('/var/www/dvc-flask-app.com/logs.db', detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
         cur = con.cursor()
         cur.execute(query, vals)
         if operation == 'SELECT':
@@ -78,7 +77,6 @@ def logDoorState(dict):
     val = (dict['timeStamp'], dict['isOpen'])
     query = 'insert into history (timeStamp, isOpen) values (?,?)'
     accessDB('INSERT', query, val)
-    print("Logged: " + str(val))
 
 # Crochet thread that manages and runs auto logging.
 @run_in_reactor
@@ -128,30 +126,29 @@ def doorIsOpen():
 @app.route('/logs/<string:year>/<string:month>/<string:day>')
 @cross_origin()
 def getLogOn(year, month, day):
-    return 'deprecated'
-    #date = "%s-%s-%s" % (year, month, day)
-    #returnList = accessDB('SELECT','select * from history where DATE(timeStamp) = ?',(date,))
 
-    ##Construct the list for the json encoder.
-    #listToEncode = []
-    #for tuple in returnList:
-    #    jsonDict = {'timeStamp': tuple[0], 'isOpen': tuple[1]}
-    #    listToEncode.append(jsonDict)
+    #Make the query
+    query = 'select * from history where DATE(timeStamp) = "%s-%s-%s"' % (year,month,day) #TODO UNSAFE
+    returnList = accessDB('SELECT',query,())
+    print(query)
 
-    ##Encode the JSON
-    #return convertToJSON(listToEncode)
+    print(len(returnList))
+
+    #Construct the list for the json encoder.
+    listToEncode = []
+    for tuple in returnList:
+        jsonDict = {'timeStamp': tuple[0], 'isOpen': tuple[1]}
+        listToEncode.append(jsonDict)
+
+    #Encode the JSON
+    return convertToJSON(listToEncode)
 
 @app.route('/logs')
 @cross_origin()
 def getLogRange():
+
     lowerBound = request.args.get('from')
     upperBound = request.args.get('to')
-
-    print("arg1")
-    print(lowerBound)
-    print("arg2")
-    print(upperBound)
-
 
     query = 'select * from history where timeStamp >= ? and timeStamp < ?'
     returnList = accessDB('SELECT',query,(lowerBound,upperBound))
