@@ -77,7 +77,6 @@ def logDoorState(dict):
     val = (dict['timeStamp'], dict['isOpen'])
     query = 'insert into history (timeStamp, isOpen) values (?,?)'
     accessDB('INSERT', query, val)
-    print("Logged: " + str(val))
 
 # Crochet thread that manages and runs auto logging.
 @run_in_reactor
@@ -129,8 +128,11 @@ def doorIsOpen():
 def getLogOn(year, month, day):
 
     #Make the query
-    query = 'select * from history where DATE(timeStamp) = ?-?-?'
-    returnList = accessDB('SELECT',query,(year,month,day))
+    query = 'select * from history where DATE(timeStamp) = "%s-%s-%s"' % (year,month,day) #TODO UNSAFE
+    returnList = accessDB('SELECT',query,())
+    print(query)
+
+    print(len(returnList))
 
     #Construct the list for the json encoder.
     listToEncode = []
