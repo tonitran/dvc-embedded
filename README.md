@@ -35,6 +35,7 @@ Deployment
 4. Ownership and Permissions
   1. chmod -R 755 ${app directory}. This will allow the Apache2 system user to make changes to the database file.
   2. chown -R www-data:www-data ${app directory}. Do the same without the recursive flag to chown the parent directory. This is needed for the same reasons as above.
+  3. See the included set_gpio_pins script to give hardware pin access to apache.
 
 Virtual Host Configuration
 ---
