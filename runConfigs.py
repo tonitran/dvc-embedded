@@ -4,5 +4,5 @@ LOCAL = 'local'
 NOPI = 'nopi'
 
 #Set configs here
-ENV = NOPI
+ENV = PROD
 loggingEnabled = True
