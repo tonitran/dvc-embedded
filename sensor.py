@@ -30,12 +30,18 @@ setup()
 
 # Set up pins, if using Pi
 if ENV != NOPI:
-    WP_PIN = 7 # See where this maps to on an rpi2
+    #WP_PIN = 7 # See where this maps to on an rpi2
+    #INPUT_MODE = 0
+    #OUTPUT_MODE = 1
+    #wiringpi.wiringPiSetup() # Use wiringpi pin layout
+    #wiringpi.pinMode(WP_PIN, INPUT_MODE)
+    #time.sleep(1) # Mandatory sleep time to allow Pi to prepare for IO
+
+    #Attempt to get non root access for www-data
+    WP_PIN = 4 # GPIO pin 4 = wiringpi pin 7 on an RPI2B+
     INPUT_MODE = 0
     OUTPUT_MODE = 1
-    wiringpi.wiringPiSetup() # Use wiringpi pin layout
-    wiringpi.pinMode(WP_PIN, INPUT_MODE)
-    time.sleep(1) # Mandatory sleep time to allow Pi to prepare for IO
+    wiringpi.wiringPiSetupSys()
 
 # Gets door state and timestamp, returning as a dict.
 # The DateTime object is always in the form of YYYY-MM-DD. (0 Padded)
