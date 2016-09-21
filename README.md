@@ -22,6 +22,7 @@ It is best to simulate the production environment as closely as possible by havi
 
 1. Modify runConfigs.py to change endpoints.
 2. Use Postman to test manually. You can import the Postman dump included.
+3. Install dependencies like: `flask twisted service_identity flask_cors crochet wiringpi`
 
 Testing
 ---
