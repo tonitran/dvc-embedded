@@ -1,7 +1,3 @@
-run:
-	export FLASK_APP=sensor.py
-	flask run --host=0.0.0.0
-
 clean:
 	rm *.pyc
 
@@ -10,3 +6,7 @@ stop:
 
 test:
 	python3 test-script.py
+
+#Run the development server. Useful for testing before deployment on Apache
+run-dev:
+	./venvpy3/bin/flask run
