@@ -1,9 +1,13 @@
 language: python
 python:
-    - "2.7"
+    - "3.4"
 install:
-    - "pip install wiringpi"
     - "pip install flask"
+    - "pip install flask_cors"
+    - "pip install wiringpi"
     - "pip install twisted"
+    - "pip install crochet"
+    - "pip install pyaml"
+    - "pip install service_identity"
 script: 
     - "python test-script.py"

@@ -1,0 +1,18 @@
+---
+environment: "nopi"
+debugMode: false
+loggingEnabled: true
+
+environments:
+  prod:
+    logPoint: 5 #Start logging at nearest 5th minute
+    logInterval: 300 #Log every 5 minutes
+    useHardware: true
+  local:
+    logPoint: 1 #Start logging nearest minute
+    logInterval: 5 #Log every 5 seconds
+    useHardware: true
+  nopi:
+    logPoint: 1 #Start logging nearest minute
+    logInterval: 5 #Log every 5 seconds
+    useHardware: false
